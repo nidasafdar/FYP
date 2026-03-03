@@ -1,0 +1,40 @@
+Project: Edge-based Smart Mobility & Occupancy Analytics System
+
+
+commands to run the project:
+python -m venv venv
+venv\scripts\activate
+
+command to install required libraries:
+pip install --upgrade pip setuptools wheel ultralytics 
+opencv-python deep_sort_realtime pyautogui
+
+Work Completed:
+
+1. Set up the development environment:
+   - Installed Python, OpenCV, PyTorch, YOLOv8, DeepSORT, and required libraries.
+   - Configured project folder and virtual environment.
+
+2. Initialized and tested YOLOv8 model for person detection:
+   - Loaded lightweight YOLOv8n model.
+   - Tested detection on sample video frames.
+
+3. Integrated DeepSORT tracker:
+   - Assigned unique IDs to detected people.
+   - Tracked movement across multiple frames to maintain identity.
+
+4. Connected detection with tracking:
+   - Converted YOLO detections to DeepSORT input format.
+   - Drew bounding boxes and unique IDs for visualization.
+
+5. Optimized performance:
+   - Ran YOLO detection every 2nd frame to reduce CPU usage.
+   - Resized video frames dynamically to fit display window.
+
+6. Created real-time display window:
+   - Displayed detection and tracking results with bounding boxes.
+   - Enabled user to stop video with ESC or Q key.
+
+What the current code does:
+- Detects people in the video, assigns IDs, tracks them across frames, and displays live bounding boxes.
+- Provides a working foundation for adding direction detection and data storage in Phase 3.
