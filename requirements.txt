@@ -5,3 +5,17 @@ pyautogui
 torch
 torchvision
 setuptools<70
+psycopg2-binary
+
+
+
+# simple test to check is the path of video is correct or not 
+# import cv2
+
+# cap = cv2.VideoCapture("videos/footage1.mp4")
+
+# print("Opened:", cap.isOpened())
+
+# ret, frame = cap.read()
+
+# print("Frame Read:", ret)
