@@ -1,9 +1,10 @@
 import cv2
 import os
+import sys
 from ultralytics import YOLO
 from deep_sort_realtime.deepsort_tracker import DeepSort
 from db_handler import DBHandler
-from config import MODEL_PATH, DEFAULT_VIDEO_PATH, DEEPSORT_MAX_AGE, LINE_ORIENTATION
+from config import MODEL_PATH, DEFAULT_VIDEO_PATH, DEEPSORT_MAX_AGE, LINE_ORIENTATION, LOOP_VIDEO, SHOW_PREVIEW
 
 # -------------------------------
 # Paths (From Config)
@@ -24,19 +25,28 @@ track_history = {}
 # Database
 # -------------------------------
 db = DBHandler() # Default config from config.py
+print("📊 Database initialized. Historical data preserved.")
 
 # -------------------------------
 # Video Capture
 # -------------------------------
-cap = cv2.VideoCapture(DEFAULT_VIDEO_PATH)
+# Check if a custom video path was passed via command line (for uploads)
+video_source = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_VIDEO_PATH
+print(f"📌 Using Video Source: {video_source}")
+
+cap = cv2.VideoCapture(video_source)
 if not cap.isOpened():
-    print(f"❌ ERROR: Cannot open video at {DEFAULT_VIDEO_PATH}")
+    print(f"❌ ERROR: Cannot open video at {video_source}")
+    # Small sleep so the user can see the error in the terminal before it closes
+    import time
+    time.sleep(10)
     exit()
 
 print("✅ Video opened successfully")
 
-cv2.namedWindow("Detection", cv2.WINDOW_NORMAL)
-cv2.resizeWindow("Detection", 1280, 720)
+if SHOW_PREVIEW:
+    cv2.namedWindow("Detection", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("Detection", 1280, 720)
 
 frame_count = 0
 
@@ -51,11 +61,18 @@ line_position = None
 # -------------------------------
 # Main Loop
 # -------------------------------
+STOP_SIGNAL = os.path.join(os.path.dirname(__file__), "stop_signal.txt")
+if os.path.exists(STOP_SIGNAL): os.remove(STOP_SIGNAL)
+
 while True:
+    # Check for stop signal from frontend
+    if os.path.exists(STOP_SIGNAL):
+        print("🛑 STOP SIGNAL RECEIVED. Terminating...")
+        break
 
     ret, frame = cap.read()
     if not ret:
-        print("✅ Video finished")
+        print("✅ Video finished (Reached last frame)")
         break
 
     frame_count += 1
@@ -153,24 +170,41 @@ while True:
             # -------------------------------
             # Store in PostgreSQL (Only on Crossing)
             # -------------------------------
+            # Use filename as session_id to allow multi-file tracking without deletion
+            session_label = os.path.basename(video_source)
             db.insert_detection(
                 track_id,
                 "person",
                 1.0,  # Constant confidence for tracked objects
                 (l, t, r, b),
                 frame_count,
-                direction
+                direction,
+                session_id=session_label
             )
 
-    # -------------------------------
-    # Resize for screen
-    # -------------------------------
-    frame = cv2.resize(frame, (1280,720))
-    cv2.imshow("Detection", frame)
+    if SHOW_PREVIEW:
+        # Resize for screen
+        frame_vis = cv2.resize(frame, (1280,720))
+        cv2.imshow("Detection", frame_vis)
 
-    key = cv2.waitKey(1)
-    if key == 27 or key == ord("q"):
-        break
+        key = cv2.waitKey(1)
+        if key == 27 or key == ord("q"):
+            break
+    else:
+        # Prevent CPU spike in headless mode if processing too fast
+        pass
+
+    # --- LIVE PREVIEW (Save to disk for Streamlit) ---
+    try:
+        temp_path = os.path.join(os.path.dirname(__file__), "temp_frame.jpg")
+        final_path = os.path.join(os.path.dirname(__file__), "current_frame.jpg")
+        # Save a reasonably compressed JPG
+        cv2.imwrite(temp_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
+        if os.path.exists(final_path):
+            os.remove(final_path)
+        os.rename(temp_path, final_path)
+    except Exception as e:
+        pass # Silently fail to not break the engine if disk is busy
 
 # -------------------------------
 # Cleanup

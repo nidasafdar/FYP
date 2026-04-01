@@ -269,12 +269,28 @@ if page == "🏢 Dashboard Overview":
 
     # --- Section: Alerts ---
     st.subheader("🔔 Real-Time Alerts")
+
+    # Cloud Connectivity Check
+    if engine.shared_service.conn is None:
+        st.error("📡 **Database Connection Failed**")
+        st.warning("""
+        The system couldn't connect to the database. If you're seeing this on Streamlit Cloud:
+        1. Go to your **Streamlit App Settings** -> **Secrets**.
+        2. Add your database URL like this:
+           ```toml
+           DB_URL = "your-remote-db-url-here"
+           ```
+        3. Make sure your database provider (e.g., Supabase, Neon) allows connections from Streamlit Cloud.
+        """)
+        st.stop()
+
     # Fetch data: Integrated date and time range filters
     data_primary = engine.get_dashboard_data(
         DEFAULT_CAMERA_ID, 
         date_val=date_range, 
         hour_range=time_range
     )
+    
     if not data_primary:
         st.warning("⚠️ No historical data found. Please click ▶ START to begin monitoring.")
         st.stop()

@@ -26,14 +26,25 @@ class DBHandler:
 
     def _connect(self):
         try:
-            self.conn = psycopg2.connect(**self.config)
+            # Handle both local (dict) and cloud (DSN string) formats
+            self.conn = psycopg2.connect(self.config.get("dsn", DB_URL))
             self.cursor = self.conn.cursor()
+
             print(f"✅ DBHandler connected to {self.config['dbname']}")
         except Exception as e:
             print(f"❌ DBHandler Connection Error: {e}")
             raise
 
-    def insert_detection(self, track_id, obj_class, confidence, bbox, frame_number, direction=None):
+    def _ensure_session_column(self):
+        """Ensures the session_id column exists for multi-video audit tracking."""
+        try:
+            self.cursor.execute("ALTER TABLE detections ADD COLUMN IF NOT EXISTS session_id VARCHAR(100)")
+            self.conn.commit()
+        except:
+            self.conn.rollback()
+
+    def insert_detection(self, track_id, obj_class, confidence, bbox, frame_number, direction=None, session_id="live"):
+        self._ensure_session_column()
         l, t, r, b = bbox
         try:
             self.cursor.execute("""
@@ -48,9 +59,10 @@ class DBHandler:
                     frame_number,
                     timestamp,
                     camera_id,
-                    direction
+                    direction,
+                    session_id
                 )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW(),%s,%s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW(),%s,%s,%s)
             """,
             (
                 int(track_id),
@@ -62,7 +74,8 @@ class DBHandler:
                 int(b),
                 int(frame_number),
                 self.camera_id,
-                direction
+                direction,
+                session_id
             ))
 
             self.conn.commit()
@@ -70,6 +83,23 @@ class DBHandler:
 
         except Exception as e:
             print("❌ DB INSERT ERROR:", e)
+            self.conn.rollback()
+
+    def clear_detections(self):
+        """Resets the detections table using DELETE to avoid locking issues with the dashboard."""
+        try:
+            # Use DELETE instead of TRUNCATE to avoid hanging when the dashboard is reading the table
+            self.cursor.execute("DELETE FROM detections")
+            # Try to reset sequence - failure usually means sequence name differs
+            try:
+                self.cursor.execute("ALTER SEQUENCE detections_id_seq RESTART WITH 1")
+            except:
+                pass 
+            
+            self.conn.commit()
+            print("🧹 Database Cleared: All previous counts zeroed out.")
+        except Exception as e:
+            print(f"❌ Error clearing detections: {e}")
             self.conn.rollback()
 
     def close(self):

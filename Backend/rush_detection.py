@@ -1,23 +1,13 @@
-import psycopg2
 from datetime import timedelta
 from config import DB_CONFIG
+from analytics_service import AnalyticsService
 
 class RushDetection:
 
-    def __init__(self, db_config=None):
-        self.config = db_config if db_config else DB_CONFIG
-        self.conn = None
-        self.cursor = None
-        self._connect()
-
-    def _connect(self):
-        try:
-            self.conn = psycopg2.connect(**self.config)
-            self.cursor = self.conn.cursor()
-            print("[SUCCESS] RushDetection Engine Connected")
-        except Exception as e:
-            print("[ERROR] RushDetection connection error:", e)
-            raise
+    def __init__(self, service=None, verbose=False):
+        self.service = service if service else AnalyticsService()
+        self.verbose = verbose
+        print(f"[SUCCESS] RushDetection initialized (Shared: {service is not None})")
 
 
     # -------------------------------
@@ -25,7 +15,7 @@ class RushDetection:
     # -------------------------------
     def get_current_count(self, camera_id, minutes=5):
 
-        self.cursor.execute(f"""
+        self.service.cursor.execute(f"""
             SELECT COUNT(*)
             FROM detections
             WHERE camera_id = %s
@@ -33,7 +23,7 @@ class RushDetection:
             AND timestamp >= NOW() - INTERVAL '{minutes} minutes'
         """, (camera_id,))
 
-        return self.cursor.fetchone()[0]
+        return self.service.cursor.fetchone()[0]
 
 
     # -------------------------------
@@ -41,7 +31,7 @@ class RushDetection:
     # -------------------------------
     def get_hourly_stats(self, camera_id):
 
-        self.cursor.execute("""
+        self.service.cursor.execute("""
             SELECT 
                 AVG(count_per_minute),
                 STDDEV(count_per_minute)
@@ -55,7 +45,7 @@ class RushDetection:
             ) sub;
         """, (camera_id,))
 
-        result = self.cursor.fetchone()
+        result = self.service.cursor.fetchone()
 
         mean = result[0] if result[0] else 0
         std = result[1] if result[1] else 1  # avoid division by zero
@@ -96,14 +86,15 @@ class RushDetection:
         z = self.calculate_z_score(current, mean, std)
         status = self.get_alert_level(z)
 
-        print("\n--- RUSH ANALYSIS ---")
-        print(f"Camera: {camera_id}")
-        print(f"Window: Last {minutes} minutes")
-        print(f"Current Count: {current}")
-        print(f"Hourly Avg: {round(mean,2)}")
-        print(f"Std Dev: {round(std,2)}")
-        print(f"Z-Score: {round(z,2)}")
-        print(f"Status: {status}")
+        if self.verbose:
+            print("\n--- RUSH ANALYSIS ---")
+            print(f"Camera: {camera_id}")
+            print(f"Window: Last {minutes} minutes")
+            print(f"Current Count: {current}")
+            print(f"Hourly Avg: {round(mean,2)}")
+            print(f"Std Dev: {round(std,2)}")
+            print(f"Z-Score: {round(z,2)}")
+            print(f"Status: {status}")
 
         return {
             "current": current,
@@ -115,7 +106,5 @@ class RushDetection:
 
 
     def close(self):
-
-        self.cursor.close()
-        self.conn.close()
-        print("[SUCCESS] RushDetection Closed")
+        # We don't close the service here anymore if shared
+        print("[SUCCESS] RushDetection Logic Disengaged")
