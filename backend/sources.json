@@ -1,0 +1,30 @@
+[
+  {
+    "id": "cam-01",
+    "title": "Main Entrance",
+    "camera_id": "Camera_01",
+    "description": "Simulated main entrance camera",
+    "stream_url": "sim://camera_01"
+  },
+  {
+    "id": "cam-02",
+    "title": "Back Entrance",
+    "camera_id": "Camera_02",
+    "description": "Simulated back entrance camera",
+    "stream_url": "sim://camera_02"
+  },
+  {
+    "id": "cam-03",
+    "title": "Hallway",
+    "camera_id": "Camera_03",
+    "description": "Simulated hallway camera",
+    "stream_url": "sim://camera_03"
+  },
+  {
+    "id": "cam-04",
+    "title": "New Camera",
+    "camera_id": "Camera_04",
+    "description": "",
+    "stream_url": ""
+  }
+]

@@ -1,8 +1,0 @@
-ultralytics
-opencv-python-headless
-deep_sort_realtime
-torch
-torchvision
-psycopg2-binary
-streamlit
-pandas

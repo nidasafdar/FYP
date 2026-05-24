@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+pydantic
+supabase
+aiofiles
+python-multipart
+opencv-python
+ultralytics
+deep-sort-realtime

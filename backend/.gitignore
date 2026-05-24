@@ -11,12 +11,7 @@ venv/
 .venv/
 env/
 ENV/
-.env
-.env*
-**/.env
-**/.env.*
-backend/.env
-frontend/.env
+# .env
 
 # Project specific
 Backend/yolov8n.pt
